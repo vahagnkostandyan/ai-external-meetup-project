@@ -61,7 +61,11 @@ class BrowserExecutor(AgentExecutor):
             parts=[Part(root=TextPart(text="Starting browser automation..."))]
         ))
 
-        answer = await run_agent_streamed(agent, context.get_user_input(), updater)
+        try:
+            async with mcp_server:
+                answer = await run_agent_streamed(agent, context.get_user_input(), updater)
+        except Exception as e:
+            answer = f"Browser automation failed: {e}"
 
         await updater.complete(message=updater.new_agent_message(
             parts=[Part(root=TextPart(text=answer))]
@@ -96,10 +100,9 @@ handler = DefaultRequestHandler(
 app = A2AStarletteApplication(agent_card=agent_card, http_handler=handler).build()
 
 async def main():
-    async with mcp_server:
-        config = uvicorn.Config(app, host=AGENT_HOST, port=AGENT_PORT)
-        server = uvicorn.Server(config)
-        await server.serve()
+    config = uvicorn.Config(app, host=AGENT_HOST, port=AGENT_PORT)
+    server = uvicorn.Server(config)
+    await server.serve()
 
 if __name__ == "__main__":
     asyncio.run(main())
