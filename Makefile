@@ -1,4 +1,4 @@
-.PHONY: install run run-mcp run-recruiting run-browser run-orchestrator stop
+.PHONY: install run run-simple run-mcp run-recruiting run-browser run-orchestrator stop
 
 PIDS_FILE := .running_pids
 PORTS := 5001 5002 5003 8000
@@ -28,6 +28,10 @@ run: stop
 	@echo "All services running. Use 'make stop' to shut down."
 	@echo ""
 	chainlit run orchestrator.py --port 8000
+
+run-simple:
+	@echo "Starting Simple Agent → http://localhost:8000"
+	chainlit run simple_agent.py --port 8000
 
 run-mcp:
 	@echo "Starting MCP Server → http://localhost:5003"
