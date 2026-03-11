@@ -1,4 +1,4 @@
-.PHONY: install run run-simple run-mcp run-recruiting run-browser run-orchestrator stop
+.PHONY: install run run-simple run-mcp-agent run-mcp run-recruiting run-browser run-orchestrator stop
 
 PIDS_FILE := .running_pids
 PORTS := 5001 5002 5003 8000
@@ -32,6 +32,16 @@ run: stop
 run-simple:
 	@echo "Starting Simple Agent → http://localhost:8000"
 	chainlit run simple_agent.py --port 8000
+
+run-mcp-agent: stop
+	@echo "Starting MCP Agent + MCP Server..."
+	@> $(PIDS_FILE)
+	@echo "[1/2] MCP Server     → http://localhost:5003"
+	@python mcp_servers/recruiting_server.py &  echo $$! >> $(PIDS_FILE)
+	@sleep 1
+	@echo "[2/2] MCP Agent UI   → http://localhost:8000"
+	@echo ""
+	chainlit run mcp_agent.py --port 8000
 
 run-mcp:
 	@echo "Starting MCP Server → http://localhost:5003"
