@@ -36,6 +36,8 @@ User (Browser)
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env
+# Fill in your OPENAI_API_KEY
 ```
 
 ## Run
@@ -55,12 +57,13 @@ make stop
 ## Project Structure
 
 ```
-orchestrator.py                 # Chat UI + agent routing
+orchestrator.py                 # Chat UI + agent routing (auto-discovers sub-agents)
 sub_agents/
   recruiting_agent.py           # Sub-agent with MCP tools (job search, candidates)
   browser_agent.py              # Sub-agent with Chrome DevTools MCP (real browser)
 mcp_servers/
   recruiting_server.py          # MCP server with 5 recruiting tools
 _utils/
+  a2a.py                        # A2A utilities (discovery, streaming, tool bridging)
   mock_data.py                  # Mock candidates & jobs data
 ```
