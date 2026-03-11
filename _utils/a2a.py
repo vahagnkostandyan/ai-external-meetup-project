@@ -1,7 +1,7 @@
 import json
 
 import httpx
-from agents import Agent, Runner
+from agents import Agent, Runner, function_tool
 from agents.stream_events import RunItemStreamEvent
 from agents.items import ToolCallItem, ToolCallOutputItem
 from a2a.client import ClientFactory, ClientConfig, create_text_message_object
@@ -47,6 +47,34 @@ async def run_agent_streamed(agent: Agent, text: str, updater: TaskUpdater) -> s
             ))
 
     return result.final_output or "Done."
+
+
+async def discover_tools(agent_urls: list[str], wrap_call=None) -> list:
+    """Discover A2A agents and return them as function tools for the OpenAI Agents SDK.
+
+    wrap_call(agent_name, agent_url, query) -> str — optional async function that
+    wraps stream_a2a with UI concerns (e.g. Chainlit steps). When not provided,
+    stream_a2a is called directly.
+    """
+    tools = []
+    async with httpx.AsyncClient(timeout=10) as http:
+        for url in agent_urls:
+            card = await A2ACardResolver(http, url).get_agent_card()
+            agent_url = str(card.url)
+            agent_name = card.name
+            name = f"ask_{card.name.lower().replace(' ', '_')}"
+            skills = "; ".join(f"{s.name}: {s.description}" for s in (card.skills or []))
+            desc = f"{card.description} Skills: {skills}" if skills else card.description
+
+            def _make_call(bound_url, bound_name):
+                async def call(query: str) -> str:
+                    if wrap_call:
+                        return await wrap_call(bound_name, bound_url, query)
+                    return await stream_a2a(bound_url, query)
+                return call
+
+            tools.append(function_tool(_make_call(agent_url, agent_name), name_override=name, description_override=desc))
+    return tools
 
 
 async def stream_a2a(agent_url: str, query: str, on_tool_call=None) -> str:
