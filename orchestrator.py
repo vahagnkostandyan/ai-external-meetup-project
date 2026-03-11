@@ -1,15 +1,20 @@
 import os
 
+import httpx
 import chainlit as cl
 from dotenv import load_dotenv
 from agents import Agent, Runner, function_tool
 from _utils.a2a import stream_a2a
+from a2a.client.card_resolver import A2ACardResolver
 
 load_dotenv()
 cl.instrument_openai()
 
-RECRUITING_URL = os.getenv("RECRUITING_AGENT_URL", "http://localhost:5001")
-BROWSER_URL = os.getenv("BROWSER_AGENT_URL", "http://localhost:5002")
+AGENT_URLS = [
+    url.strip()
+    for url in os.getenv("AGENT_URLS").split(",")
+    if url.strip()
+]
 
 
 async def _call_agent(url: str, query: str, parent: cl.Step) -> str:
@@ -24,44 +29,73 @@ async def _call_agent(url: str, query: str, parent: cl.Step) -> str:
     return await stream_a2a(url, query, on_tool_call=on_tool)
 
 
-@function_tool
-async def ask_recruiting_agent(query: str) -> str:
-    """Searches jobs and candidates, scores and shortlists candidates using MCP tools."""
-    async with cl.Step(name="Recruiting Agent", type="tool") as step:
-        return await _call_agent(RECRUITING_URL, query, step)
+async def discover_agents(urls: list[str]):
+    """Fetch AgentCards from all configured sub-agent URLs via A2A discovery."""
+    cards = []
+    async with httpx.AsyncClient(timeout=10) as http:
+        for url in urls:
+            try:
+                card = await A2ACardResolver(http, url).get_agent_card()
+                cards.append(card)
+            except Exception as e:
+                print(f"[discovery] Could not reach {url}: {e}")
+    return cards
 
 
-@function_tool
-async def ask_browser_agent(query: str) -> str:
-    """Controls a real Chrome browser via Chrome DevTools. Use for any browser task: navigating to URLs, filling forms, clicking buttons, reading page content, applying to jobs, or general web browsing."""
-    async with cl.Step(name="Browser Agent", type="tool") as step:
-        return await _call_agent(BROWSER_URL, query, step)
+def make_tool(card):
+    """Create a function_tool dynamically from a discovered AgentCard."""
+    agent_url = str(card.url)
+    agent_name = card.name
+    skills = "; ".join(f"{s.name}: {s.description}" for s in (card.skills or []))
+    description = f"{card.description} Skills: {skills}" if skills else card.description
+    tool_name = f"ask_{agent_name.lower().replace(' ', '_')}"
+
+    async def call(query: str) -> str:
+        async with cl.Step(name=agent_name, type="tool") as step:
+            return await _call_agent(agent_url, query, step)
+
+    return function_tool(call, name_override=tool_name, description_override=description)
 
 
-orchestrator = Agent(
-    name="Orchestrator",
-    model=os.getenv("OPENAI_MODEL", "gpt-5.4"),
-    instructions=(
-        "You are a fully autonomous assistant with access to specialized agents. "
-        "Act decisively — never ask the user for confirmation, clarification, or permission before proceeding. "
+def build_instructions(cards):
+    """Assemble the orchestrator system prompt from discovered agent cards."""
+    agent_lines = []
+    for card in cards:
+        skills = ", ".join(s.name for s in (card.skills or []))
+        agent_lines.append(f"- {card.name}: {card.description} (skills: {skills})")
+    agents_info = "\n".join(agent_lines) if agent_lines else "No agents discovered."
+
+    return (
+        "You are a fully autonomous assistant with access to specialized agents.\n"
+        "Act decisively — never ask the user for confirmation, clarification, or permission before proceeding.\n"
         "Execute the full task end-to-end on your own. Only message the user if you are truly blocked "
-        "(e.g. missing credentials, ambiguous critical choice with no reasonable default). "
-        "Delegate recruiting tasks (job search, candidate scoring, shortlisting) to the recruiting agent. "
-        "Delegate ANY browser task to the browser agent — it controls a real Chrome browser and can navigate to URLs, "
-        "read page content, fill forms, click buttons, upload files, and apply to jobs. "
-        "Always prefer using the browser agent when the user asks to open a website, look something up on the web, "
-        "or interact with any web page. You can call multiple agents in sequence. Synthesize results clearly. "
-        "When a user uploads a resume/CV, include the resume path so the browser agent can use it when applying to jobs. "
-        "When in doubt, make reasonable assumptions and proceed rather than asking."
-    ),
-    tools=[ask_recruiting_agent, ask_browser_agent],
-)
+        "(e.g. missing credentials, ambiguous critical choice with no reasonable default).\n"
+        "You can call multiple agents in sequence. Synthesize results clearly.\n"
+        "When a user uploads a resume/CV, include the resume path so the browser agent can use it when applying to jobs.\n"
+        "When in doubt, make reasonable assumptions and proceed rather than asking.\n\n"
+        f"Available agents:\n{agents_info}"
+    )
 
 
 @cl.on_chat_start
 async def on_start():
+    cards = await discover_agents(AGENT_URLS)
+    tools = [make_tool(card) for card in cards]
+
+    agent = Agent(
+        name="Orchestrator",
+        model=os.getenv("OPENAI_MODEL", "gpt-5.4"),
+        instructions=build_instructions(cards),
+        tools=tools,
+    )
+
+    cl.user_session.set("agent", agent)
     cl.user_session.set("history", [])
-    await cl.Message(content="Hi! I'm GPT-5.4. How can I help you today?").send()
+
+    names = ", ".join(c.name for c in cards)
+    await cl.Message(
+        content=f"Hi! I discovered **{len(cards)}** agent(s): {names}. How can I help you today?"
+    ).send()
 
 
 @cl.on_message
@@ -81,6 +115,7 @@ async def on_message(message: cl.Message):
     history = cl.user_session.get("history") or []
     history.append({"role": "user", "content": text})
 
-    result = await Runner.run(orchestrator, history)
+    agent = cl.user_session.get("agent")
+    result = await Runner.run(agent, history)
     cl.user_session.set("history", result.to_input_list())
     await cl.Message(content=result.final_output).send()
