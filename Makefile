@@ -1,4 +1,4 @@
-.PHONY: install run run-simple run-mcp-agent run-mcp run-recruiting run-browser run-orchestrator stop
+.PHONY: install run run-simple run-mcp-agent run-mcp run-recruiting run-browser run-browser-chat run-orchestrator stop
 
 PIDS_FILE := .running_pids
 PORTS := 5001 5002 5003 8000
@@ -57,6 +57,10 @@ run-recruiting:
 run-browser:
 	@echo "Starting Browser Agent → http://localhost:5002"
 	python sub_agents/browser_agent.py
+
+run-browser-chat:
+	@echo "Starting Browser Chat → http://localhost:8000"
+	chainlit run browser_chat.py --port 8000
 
 run-orchestrator:
 	@echo "Starting Orchestrator UI → http://localhost:8000"
