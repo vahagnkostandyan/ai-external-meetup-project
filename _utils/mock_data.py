@@ -252,7 +252,7 @@ JOB_POSTINGS: tuple[JobPosting, ...] = (
         location="Remote-US",
         skills=("python", "llm", "langchain", "fastapi", "mlops"),
         employment_type="Full-time",
-        apply_url="https://docs.google.com/forms/d/e/1FAIpQLSdP2ajeWr2EMtmN89S-cFbISfryctTsOb6890235XJaiaf-fA/viewform?usp=publish-editor",
+        apply_url="https://www.jotform.com/form-templates/preview/21115036573546/classic",
         summary="Design and build autonomous AI agents and multi-agent orchestration systems.",
     ),
 )
