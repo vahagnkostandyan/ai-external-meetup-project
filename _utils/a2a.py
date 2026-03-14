@@ -1,13 +1,17 @@
 import json
+from uuid import uuid4
 
 import httpx
 from agents import Agent, Runner, function_tool
 from agents.stream_events import RunItemStreamEvent
 from agents.items import ToolCallItem, ToolCallOutputItem
-from a2a.client import ClientFactory, ClientConfig, create_text_message_object
+from a2a.client import ClientFactory, ClientConfig
 from a2a.client.card_resolver import A2ACardResolver
 from a2a.server.tasks.task_updater import TaskUpdater
-from a2a.types import TaskStatusUpdateEvent, TaskState, Part, DataPart
+from a2a.types import (
+    TaskStatusUpdateEvent, TaskState, Part, DataPart,
+    TextPart, FilePart, FileWithBytes, Message, Role,
+)
 
 
 def _format_json(raw) -> str:
@@ -77,13 +81,22 @@ async def discover_tools(agent_urls: list[str], wrap_call=None) -> list:
     return tools
 
 
-async def stream_a2a(agent_url: str, query: str, on_tool_call=None) -> str:
+def _build_message(query: str, file: dict | None = None) -> Message:
+    parts = [Part(root=TextPart(text=query))]
+    if file:
+        parts.append(Part(root=FilePart(
+            file=FileWithBytes(bytes=file["bytes"], name=file["name"], mime_type=file.get("mime_type")),
+        )))
+    return Message(role=Role.user, parts=parts, message_id=str(uuid4()))
+
+
+async def stream_a2a(agent_url: str, query: str, file: dict | None = None, on_tool_call=None) -> str:
     """Send a streaming A2A message. Calls on_tool_call(name, input, output) per tool, returns final text."""
     async with httpx.AsyncClient(timeout=60) as http:
         card = await A2ACardResolver(http, agent_url).get_agent_card()
         client = ClientFactory(ClientConfig(httpx_client=http)).create(card)
         final_text = ""
-        async for event in client.send_message(create_text_message_object(content=query)):
+        async for event in client.send_message(_build_message(query, file)):
             if not isinstance(event, tuple):
                 continue
             _, update = event

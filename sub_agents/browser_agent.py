@@ -1,6 +1,8 @@
 import asyncio
+import base64
 import os
 import sys
+import tempfile
 
 import uvicorn
 from dotenv import load_dotenv
@@ -17,7 +19,7 @@ from a2a.server.tasks.task_updater import TaskUpdater
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.server.apps.jsonrpc.starlette_app import A2AStarletteApplication
-from a2a.types import AgentCard, AgentCapabilities, AgentSkill, Part, TextPart
+from a2a.types import AgentCard, AgentCapabilities, AgentSkill, Part, TextPart, FilePart
 
 load_dotenv()
 
@@ -53,6 +55,21 @@ agent = Agent(
 )
 
 
+def _extract_file(context: RequestContext) -> str | None:
+    """If the A2A message contains a FilePart, decode it to a temp file and return the path."""
+    if not context.message:
+        return None
+    for part in context.message.parts:
+        if isinstance(part.root, FilePart) and hasattr(part.root.file, "bytes"):
+            fp = part.root.file
+            suffix = os.path.splitext(fp.name)[1] if fp.name else ""
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, prefix="resume_")
+            tmp.write(base64.b64decode(fp.bytes))
+            tmp.close()
+            return tmp.name
+    return None
+
+
 class BrowserExecutor(AgentExecutor):
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
@@ -61,9 +78,14 @@ class BrowserExecutor(AgentExecutor):
             parts=[Part(root=TextPart(text="Starting browser automation..."))]
         ))
 
+        user_input = context.get_user_input()
+        file_path = _extract_file(context)
+        if file_path:
+            user_input += f"\n[Resume file available at: {file_path}]"
+
         try:
             async with mcp_server:
-                answer = await run_agent_streamed(agent, context.get_user_input(), updater)
+                answer = await run_agent_streamed(agent, user_input, updater)
         except Exception as e:
             answer = f"Browser automation failed: {e}"
 
