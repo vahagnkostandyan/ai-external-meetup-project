@@ -64,7 +64,7 @@ async def discover_tools(agent_urls: list[str], wrap_call=None) -> list:
     async with httpx.AsyncClient(timeout=10) as http:
         for url in agent_urls:
             card = await A2ACardResolver(http, url).get_agent_card()
-            agent_url = str(card.url)
+            agent_url = url
             agent_name = card.name
             name = f"ask_{card.name.lower().replace(' ', '_')}"
             skills = "; ".join(f"{s.name}: {s.description}" for s in (card.skills or []))
@@ -94,6 +94,7 @@ async def stream_a2a(agent_url: str, query: str, file: dict | None = None, on_to
     """Send a streaming A2A message. Calls on_tool_call(name, input, output) per tool, returns final text."""
     async with httpx.AsyncClient(timeout=60) as http:
         card = await A2ACardResolver(http, agent_url).get_agent_card()
+        card.url = agent_url
         client = ClientFactory(ClientConfig(httpx_client=http)).create(card)
         final_text = ""
         async for event in client.send_message(_build_message(query, file)):
