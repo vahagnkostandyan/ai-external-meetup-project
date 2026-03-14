@@ -70,6 +70,6 @@ async def on_message(message: cl.Message):
     history.append({"role": "user", "content": text})
 
     agent = cl.user_session.get("agent")
-    result = await Runner.run(agent, history)
+    result = await Runner.run(agent, history, max_turns=25)
     cl.user_session.set("history", result.to_input_list())
     await cl.Message(content=result.final_output).send()

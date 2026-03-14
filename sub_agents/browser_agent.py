@@ -85,7 +85,7 @@ class BrowserExecutor(AgentExecutor):
 
         try:
             async with mcp_server:
-                answer = await run_agent_streamed(agent, user_input, updater)
+                answer = await run_agent_streamed(agent, user_input, updater, max_turns=100)
         except Exception as e:
             answer = f"Browser automation failed: {e}"
 

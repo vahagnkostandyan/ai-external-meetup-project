@@ -27,9 +27,9 @@ def _get(obj, key, default=None):
     return obj.get(key, default) if isinstance(obj, dict) else getattr(obj, key, default)
 
 
-async def run_agent_streamed(agent: Agent, text: str, updater: TaskUpdater) -> str:
+async def run_agent_streamed(agent: Agent, text: str, updater: TaskUpdater, max_turns: int = 10) -> str:
     """Run an OpenAI agent with streaming, emitting a DataPart per completed tool call."""
-    result = Runner.run_streamed(agent, input=text)
+    result = Runner.run_streamed(agent, input=text, max_turns=max_turns)
     pending = {}
 
     async for event in result.stream_events():
