@@ -18,6 +18,7 @@ mcp_server = MCPServerStdio(
     },
     cache_tools_list=True,
     client_session_timeout_seconds=60,
+    max_retry_attempts=3,
 )
 
 

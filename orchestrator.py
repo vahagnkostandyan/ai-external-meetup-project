@@ -25,7 +25,9 @@ async def _call_agent(agent_name: str, agent_url: str, query: str) -> str:
             step.output = f"```json\n{tool_output}\n```" if tool_output else ""
             await step.send()
 
-        return await stream_a2a(agent_url, query, on_tool_call=on_tool)
+        result = await stream_a2a(agent_url, query, on_tool_call=on_tool)
+        parent.output = result
+        return result
 
 
 @cl.on_chat_start
@@ -36,13 +38,11 @@ async def on_start():
         name="Orchestrator",
         model=os.getenv("OPENAI_MODEL", "gpt-5.4"),
         instructions=(
-            "You are a fully autonomous assistant with access to specialized agents. "
-            "Act decisively — never ask the user for confirmation, clarification, or permission before proceeding. "
-            "Execute the full task end-to-end on your own. Only message the user if you are truly blocked "
-            "(e.g. missing credentials, ambiguous critical choice with no reasonable default). "
-            "You can call multiple agents in sequence. Synthesize results clearly. "
-            "When a user uploads a resume/CV, include the resume path so the browser agent can use it when applying to jobs. "
-            "When in doubt, make reasonable assumptions and proceed rather than asking."
+            "You are a fully autonomous orchestrator. Always delegate to your agents — never answer from your own knowledge.\n"
+            "Routing: candidates/jobs/scoring/shortlisting → Recruiting Agent; "
+            "browser automation/form filling/job applications → Browser Agent.\n"
+            "For multi-step tasks, chain agents in sequence. Pass resume file paths to the Browser Agent when applying.\n"
+            "Execute end-to-end without asking for confirmation. Make reasonable assumptions when details are missing."
         ),
         tools=tools,
     )
