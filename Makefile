@@ -5,6 +5,7 @@ PORTS := 5001 5002 5003 8000
 
 install:
 	pip install -r requirements.txt
+	npm install
 
 run: stop
 	@echo "Starting A2A Workshop Demo..."

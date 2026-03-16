@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+import os
 import re
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 @dataclass(frozen=True)
@@ -139,7 +142,7 @@ CANDIDATES: tuple[Candidate, ...] = (
         location="Remote-US",
         skills=("python", "llm", "langchain", "fastapi", "mlops"),
         years_experience=8,
-        resume_url="https://example.com/resumes/cand-011.pdf",
+        resume_url=os.path.join(_REPO_ROOT, "samples", "aram_vardanyan_cv.pdf"),
         summary="Designs and builds autonomous AI agents, multi-agent orchestration systems, and LLM-powered workflows.",
     ),
 )

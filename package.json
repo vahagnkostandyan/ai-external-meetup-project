@@ -1,0 +1,7 @@
+{
+  "name": "a2a-workshop",
+  "private": true,
+  "dependencies": {
+    "chrome-devtools-mcp": "0.20.0"
+  }
+}

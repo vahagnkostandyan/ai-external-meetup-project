@@ -13,8 +13,8 @@ cl.instrument_openai()
 mcp_server = MCPServerStdio(
     name="Chrome DevTools",
     params={
-        "command": "npx",
-        "args": ["chrome-devtools-mcp@latest"],
+        "command": "node",
+        "args": ["node_modules/.bin/chrome-devtools-mcp"],
     },
     cache_tools_list=True,
     client_session_timeout_seconds=60,
