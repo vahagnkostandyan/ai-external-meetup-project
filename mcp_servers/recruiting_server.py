@@ -38,5 +38,31 @@ def apply_to_job(candidate_id: str = "", job_id: str = "") -> dict:
     return mock_data.apply_to_job(candidate_id=candidate_id, job_id=job_id)
 
 
+@mcp.tool()
+def add_candidate(
+    name: str = "",
+    title: str = "",
+    location: str = "",
+    skills: str = "",
+    years_experience: int = 0,
+    summary: str = "",
+) -> dict:
+    """Add a new candidate to the system. Extract these fields from a CV: name, title, location, skills (comma-separated), years_experience, summary."""
+    return mock_data.add_candidate(
+        name=name,
+        title=title,
+        location=location,
+        skills=skills,
+        years_experience=years_experience,
+        summary=summary,
+    )
+
+
+@mcp.tool()
+def delete_candidate(candidate_id: str = "", reason: str = "") -> dict:
+    """Permanently delete a candidate from the system. This action is irreversible."""
+    return mock_data.delete_candidate(candidate_id=candidate_id, reason=reason)
+
+
 if __name__ == "__main__":
     mcp.run(transport="sse")

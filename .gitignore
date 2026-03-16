@@ -6,3 +6,16 @@ __pycache__/
 .files/
 uploads/
 .chrome-profile
+node_modules/
+generated/
+export/
+adobe_clean/
+slides/
+.DS_Store
+AGENDA.md
+SLIDES.md
+TIMING_SIMULATION.md
+WORKSHOP_AGENDA.md
+generate_slides_html.py
+slides.html
+.cursor/

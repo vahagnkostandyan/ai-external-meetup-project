@@ -1,0 +1,36 @@
+CURRICULUM VITAE
+================
+
+Name:               Jordan Blake
+Title:              Senior DevOps Engineer
+Location:           Remote-US
+Years of Experience: 9
+Email:              jordan.blake@example.com
+
+SKILLS
+------
+Kubernetes, Terraform, AWS, Go, Python, Docker, CI/CD, Observability
+
+SUMMARY
+-------
+Jordan is a seasoned DevOps engineer with 9 years of experience designing
+and operating large-scale cloud infrastructure. Expert in Kubernetes cluster
+management, Terraform-based IaC, and building zero-downtime CI/CD pipelines.
+Passionate about site reliability and developer experience improvements.
+
+EXPERIENCE
+----------
+2021 – present  |  Staff DevOps Engineer, NovaTech
+                   Led migration of 200+ services to Kubernetes on AWS EKS.
+                   Reduced deployment lead time by 60% through GitOps adoption.
+
+2018 – 2021     |  Senior Platform Engineer, Orbit Systems
+                   Owned Terraform modules used across 6 product teams.
+                   Built company-wide observability stack (Prometheus + Grafana).
+
+2015 – 2018     |  DevOps Engineer, GridCloud
+                   Automated on-prem to AWS migration for 40 legacy services.
+
+EDUCATION
+---------
+B.Sc. Computer Science — University of Washington, 2015

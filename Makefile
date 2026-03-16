@@ -1,4 +1,4 @@
-.PHONY: install run run-simple run-mcp-agent run-mcp run-recruiting run-browser run-browser-chat run-orchestrator stop
+.PHONY: install run run-simple run-mcp-agent run-mcp run-recruiting run-recruiting-hitl run-browser run-browser-chat run-orchestrator stop
 
 PIDS_FILE := .running_pids
 PORTS := 5001 5002 5003 8000
@@ -54,12 +54,28 @@ run-recruiting:
 	@echo "Starting Recruiting Agent  → http://localhost:5001"
 	python sub_agents/recruiting_agent.py
 
+run-recruiting-hitl: stop
+	@echo "Starting Recruiting HITL Demo..."
+	@> $(PIDS_FILE)
+	@echo "[1/2] MCP Server        → http://localhost:5003"
+	@python mcp_servers/recruiting_server.py &  echo $$! >> $(PIDS_FILE)
+	@sleep 1
+	@echo "[2/2] HITL Recruiting UI → http://localhost:8000"
+	@echo ""
+	chainlit run recruiting_hitl.py --port 8000
+
 run-browser:
 	@echo "Starting Browser Agent → http://localhost:5002"
 	python sub_agents/browser_agent.py
 
-run-browser-chat:
-	@echo "Starting Browser Chat → http://localhost:8000"
+run-browser-chat: stop
+	@echo "Starting Browser Chat Demo..."
+	@> $(PIDS_FILE)
+	@echo "[1/2] Browser Agent  → http://localhost:5002"
+	@python sub_agents/browser_agent.py &  echo $$! >> $(PIDS_FILE)
+	@sleep 1
+	@echo "[2/2] Browser Chat UI → http://localhost:8000"
+	@echo ""
 	chainlit run browser_chat.py --port 8000
 
 run-orchestrator:

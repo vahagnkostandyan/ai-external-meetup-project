@@ -319,6 +319,10 @@ def search_jobs(
     return {"jobs": jobs, "query_used": nq}
 
 
+def _active_candidates() -> list[Candidate]:
+    return [c for c in CANDIDATES if c.id not in _DELETED_CANDIDATES]
+
+
 def search_candidates(
     skills: list[str],
     location: str = "",
@@ -326,15 +330,23 @@ def search_candidates(
 ) -> dict[str, Any]:
     wanted = _norm_set(skills)
     loc = location.strip().lower()
+    pool = _active_candidates() + _ADDED_CANDIDATES  # type: ignore[operator]
 
-    def rank(c: Candidate) -> tuple[int, int]:
-        overlap = len(wanted & _norm_set(c.skills))
-        bonus = 1 if loc and loc in c.location.lower() else 0
-        return overlap + bonus, c.years_experience
+    def rank(c: Any) -> tuple[int, int]:
+        c_skills = c.skills if isinstance(c, Candidate) else c.get("skills", [])
+        c_loc = c.location if isinstance(c, Candidate) else c.get("location", "")
+        c_exp = c.years_experience if isinstance(c, Candidate) else c.get("years_experience", 0)
+        overlap = len(wanted & _norm_set(c_skills))
+        bonus = 1 if loc and loc in c_loc.lower() else 0
+        return overlap + bonus, c_exp
 
-    ranked = sorted(CANDIDATES, key=rank, reverse=True)
-    selected = ranked[:max(1, min(limit, len(ranked)))]
-    return {"candidates": [candidate_to_dict(c) for c in selected]}
+    ranked = sorted(pool, key=rank, reverse=True)
+    selected = ranked[:max(1, min(limit, len(ranked)))] if ranked else []
+
+    def to_dict(c: Any) -> dict[str, Any]:
+        return candidate_to_dict(c) if isinstance(c, Candidate) else c
+
+    return {"candidates": [to_dict(c) for c in selected]}
 
 
 def score_candidate(candidate_id: str, job_description: str) -> dict[str, Any]:
@@ -354,6 +366,48 @@ def score_candidate(candidate_id: str, job_description: str) -> dict[str, Any]:
 def shortlist_candidate(candidate_id: str, reason: str) -> dict[str, Any]:
     shortlist_id = f"short-{uuid5(NAMESPACE_URL, f'{candidate_id}:{reason}')}"
     return {"shortlist_id": shortlist_id}
+
+
+_DELETED_CANDIDATES: set[str] = set()
+_ADDED_CANDIDATES: list[dict[str, Any]] = []
+
+
+def delete_candidate(candidate_id: str, reason: str = "") -> dict[str, Any]:
+    """Permanently remove a candidate from the system."""
+    if candidate_id in _DELETED_CANDIDATES:
+        raise ValueError(f"Candidate {candidate_id} was already deleted.")
+    cand = next((c for c in CANDIDATES if c.id == candidate_id), None)
+    if cand is None:
+        raise ValueError(f"Unknown candidate_id: {candidate_id}")
+    _DELETED_CANDIDATES.add(candidate_id)
+    msg = f"Candidate {cand.name} ({candidate_id}) has been permanently deleted from the system."
+    if reason:
+        msg += f" Reason: {reason}"
+    return {"deleted": True, "candidate_id": candidate_id, "name": cand.name, "message": msg}
+
+
+def add_candidate(
+    name: str,
+    title: str,
+    location: str,
+    skills: str,
+    years_experience: int,
+    summary: str,
+) -> dict[str, Any]:
+    """Add a new candidate parsed from a CV."""
+    candidate_id = f"cand-{len(CANDIDATES) + len(_ADDED_CANDIDATES) + 1:03d}"
+    skill_list = [s.strip().lower() for s in skills.split(",") if s.strip()]
+    record = {
+        "id": candidate_id,
+        "name": name,
+        "title": title,
+        "location": location,
+        "skills": skill_list,
+        "years_experience": years_experience,
+        "summary": summary,
+    }
+    _ADDED_CANDIDATES.append(record)
+    return {"added": True, "candidate": record}
 
 
 def apply_to_job(candidate_id: str, job_id: str) -> dict[str, Any]:
